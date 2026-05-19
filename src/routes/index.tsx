@@ -189,44 +189,43 @@ function Index() {
       });
     });
 
-    const directionsService = new g.DirectionsService();
+    const trazarRuta = (
+      destino: { lat: number; lng: number },
+      color: string
+    ) => {
+      const service = new g.DirectionsService();
+      const renderer = new g.DirectionsRenderer({
+        map,
+        suppressMarkers: true,
+        preserveViewport: true,
+        polylineOptions: {
+          strokeColor: color,
+          strokeWeight: 3,
+          strokeOpacity: 0.8,
+        },
+      });
+      service.route(
+        {
+          origin: { lat: hub.lat, lng: hub.lng },
+          destination: { lat: destino.lat, lng: destino.lng },
+          travelMode: g.TravelMode.DRIVING,
+        },
+        (result: any, status: any) => {
+          if (status === "OK" && result) {
+            renderer.setDirections(result);
+          } else {
+            console.warn("Directions request failed:", status);
+          }
+        }
+      );
+    };
+
     points
       .filter((p) => p.type !== "hub")
-      .forEach((p, idx) => {
+      .forEach((p) => {
         const route = routeForType[p.type];
         if (!route) return;
-        const renderer = new g.DirectionsRenderer({
-          map,
-          suppressMarkers: true,
-          preserveViewport: true,
-          polylineOptions: { strokeColor: route.color, strokeWeight: 3 },
-        });
-        setTimeout(() => {
-          directionsService.route(
-            {
-              origin: { lat: hub.lat, lng: hub.lng },
-              destination: { lat: p.lat, lng: p.lng },
-              travelMode: g.TravelMode.DRIVING,
-            },
-            (result: any, status: any) => {
-              if (status === "OK" && result) {
-                renderer.setDirections(result);
-              } else {
-                new g.Polyline({
-                  path: [
-                    { lat: hub.lat, lng: hub.lng },
-                    { lat: p.lat, lng: p.lng },
-                  ],
-                  geodesic: true,
-                  strokeColor: route.color,
-                  strokeOpacity: 0.6,
-                  strokeWeight: 3,
-                  map,
-                });
-              }
-            }
-          );
-        }, idx * 120);
+        trazarRuta({ lat: p.lat, lng: p.lng }, route.color);
       });
   }, [mapLoaded, points]);
 
