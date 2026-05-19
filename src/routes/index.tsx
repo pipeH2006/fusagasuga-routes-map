@@ -48,14 +48,13 @@ const typeColors: Record<NodeType, string> = {
   intermunicipal: "#eab308",
 };
 
-// Route assignment: urbano + subhub => A azul, rural => B verde, critico => C rojo, intermunicipal => D naranja
 const routeForType: Record<NodeType, { name: string; color: string } | null> = {
   hub: null,
-  subhub: { name: "Ruta A — Urbana", color: "#2563eb" },
-  urbano: { name: "Ruta A — Urbana", color: "#2563eb" },
-  rural: { name: "Ruta B — Rural Norte", color: "#16a34a" },
-  critico: { name: "Ruta C — Rural Occidente", color: "#dc2626" },
-  intermunicipal: { name: "Ruta D — Intermunicipal", color: "#ea580c" },
+  subhub: { name: "Ruta A — Urbana", color: "#185FA5" },
+  urbano: { name: "Ruta A — Urbana", color: "#185FA5" },
+  rural: { name: "Ruta B — Rural Norte", color: "#0F6E56" },
+  critico: { name: "Ruta C — Rural Occidente", color: "#A32D2D" },
+  intermunicipal: { name: "Ruta D — Intermunicipal", color: "#854F0B" },
 };
 
 // Haversine distance in km
