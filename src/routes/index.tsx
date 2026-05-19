@@ -183,10 +183,10 @@ function Index() {
   ];
 
   const routeLegend = [
-    { name: "Ruta A — Urbana", color: "#2563eb" },
-    { name: "Ruta B — Rural Norte", color: "#16a34a" },
-    { name: "Ruta C — Rural Occidente", color: "#dc2626" },
-    { name: "Ruta D — Intermunicipal", color: "#ea580c" },
+    { name: "Ruta A — Urbana", color: "#185FA5" },
+    { name: "Ruta B — Rural Norte", color: "#0F6E56" },
+    { name: "Ruta C — Rural Occidente", color: "#A32D2D" },
+    { name: "Ruta D — Intermunicipal", color: "#854F0B" },
   ];
 
   return (
