@@ -117,16 +117,22 @@ function Index() {
     let cancelled = false;
     (async () => {
       try {
-        const { results } = await geocode({
-          data: { addresses: puntos.map((p) => p.address) },
-        });
+        const toGeocode = puntos.filter((p) => p.lat == null || p.lng == null);
+        const { results } = toGeocode.length
+          ? await geocode({ data: { addresses: toGeocode.map((p) => p.address) } })
+          : { results: [] as Array<{ address: string; location: { lat: number; lng: number } | null }> };
         if (cancelled) return;
+        const locByAddress = new Map(results.map((r) => [r.address, r.location]));
         const resolved: Point[] = [];
         const missing: string[] = [];
-        puntos.forEach((p, i) => {
-          const loc = results[i]?.location;
-          if (loc) resolved.push({ ...p, lat: loc.lat, lng: loc.lng });
-          else missing.push(p.name);
+        puntos.forEach((p) => {
+          if (p.lat != null && p.lng != null) {
+            resolved.push({ ...p, lat: p.lat, lng: p.lng });
+          } else {
+            const loc = locByAddress.get(p.address);
+            if (loc) resolved.push({ ...p, lat: loc.lat, lng: loc.lng });
+            else missing.push(p.name);
+          }
         });
         if (missing.length) {
           console.warn("No se pudieron geocodificar:", missing);
