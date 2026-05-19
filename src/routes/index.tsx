@@ -89,6 +89,7 @@ function Index() {
   const [points, setPoints] = useState<Point[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const geocode = useServerFn(geocodeAddresses);
+  const fetchRoutes = useServerFn(computeRoutes);
 
   // Load Google Maps JS
   useEffect(() => {
