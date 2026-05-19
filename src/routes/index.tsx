@@ -199,45 +199,47 @@ function Index() {
       });
     });
 
-    const trazarRuta = (
-      destino: { lat: number; lng: number },
-      color: string
-    ) => {
-      const service = new g.DirectionsService();
-      const renderer = new g.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
-        preserveViewport: true,
-        polylineOptions: {
-          strokeColor: color,
-          strokeWeight: 3,
-          strokeOpacity: 0.8,
-        },
-      });
-      service.route(
-        {
-          origin: { lat: hub.lat, lng: hub.lng },
-          destination: { lat: destino.lat, lng: destino.lng },
-          travelMode: g.TravelMode.DRIVING,
-        },
-        (result: any, status: any) => {
-          if (status === "OK" && result) {
-            renderer.setDirections(result);
-          } else {
-            console.warn("Directions request failed:", status);
-          }
-        }
-      );
-    };
+    const targets = points
+      .filter((p) => p.type !== "hub" && routeForType[p.type])
+      .map((p) => ({ point: p, color: routeForType[p.type]!.color }));
 
-    points
-      .filter((p) => p.type !== "hub")
-      .forEach((p) => {
-        const route = routeForType[p.type];
-        if (!route) return;
-        trazarRuta({ lat: p.lat, lng: p.lng }, route.color);
-      });
-  }, [mapLoaded, points]);
+    let cancelled = false;
+    const polylines: any[] = [];
+
+    (async () => {
+      try {
+        const { results } = await fetchRoutes({
+          data: {
+            origin: { lat: hub.lat, lng: hub.lng },
+            destinations: targets.map((t) => ({ lat: t.point.lat, lng: t.point.lng })),
+          },
+        });
+        if (cancelled) return;
+        results.forEach((r, i) => {
+          if (!r.polyline) {
+            console.warn("No route for", targets[i].point.name);
+            return;
+          }
+          const path = g.geometry.encoding.decodePath(r.polyline);
+          const pl = new g.Polyline({
+            map,
+            path,
+            strokeColor: targets[i].color,
+            strokeWeight: 4,
+            strokeOpacity: 0.85,
+          });
+          polylines.push(pl);
+        });
+      } catch (e) {
+        console.error("Routes fetch failed:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      polylines.forEach((p) => p.setMap(null));
+    };
+  }, [mapLoaded, points, fetchRoutes]);
 
   const nodeLegend: NodeType[] = ["hub", "subhub", "urbano", "rural", "critico", "intermunicipal"];
   const routeLegend = [
