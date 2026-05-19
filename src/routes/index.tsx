@@ -156,20 +156,44 @@ function Index() {
       });
     });
 
-    points.slice(1).forEach((p) => {
+    const directionsService = new g.DirectionsService();
+    points.slice(1).forEach((p, idx) => {
       const route = routeForType[p.type];
       if (!route) return;
-      new g.Polyline({
-        path: [
-          { lat: hub.lat, lng: hub.lng },
-          { lat: p.lat, lng: p.lng },
-        ],
-        geodesic: true,
-        strokeColor: route.color,
-        strokeOpacity: 0.85,
-        strokeWeight: 3,
+      const renderer = new g.DirectionsRenderer({
         map,
+        suppressMarkers: true,
+        preserveViewport: true,
+        polylineOptions: { strokeColor: route.color, strokeWeight: 3 },
       });
+      // Stagger requests slightly to be gentle on the API
+      setTimeout(() => {
+        directionsService.route(
+          {
+            origin: { lat: hub.lat, lng: hub.lng },
+            destination: { lat: p.lat, lng: p.lng },
+            travelMode: g.TravelMode.DRIVING,
+          },
+          (result: any, status: any) => {
+            if (status === "OK" && result) {
+              renderer.setDirections(result);
+            } else {
+              // Fallback: straight line if Directions fails (e.g. no route)
+              new g.Polyline({
+                path: [
+                  { lat: hub.lat, lng: hub.lng },
+                  { lat: p.lat, lng: p.lng },
+                ],
+                geodesic: true,
+                strokeColor: route.color,
+                strokeOpacity: 0.6,
+                strokeWeight: 3,
+                map,
+              });
+            }
+          }
+        );
+      }, idx * 120);
     });
   }, [loaded]);
 
