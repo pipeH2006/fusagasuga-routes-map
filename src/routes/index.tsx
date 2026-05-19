@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { geocodeAddresses } from "@/lib/geocode.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -7,27 +9,30 @@ export const Route = createFileRoute("/")({
 
 type NodeType = "hub" | "subhub" | "urbano" | "rural" | "critico" | "intermunicipal";
 
-interface Point {
+interface PointInput {
   name: string;
-  lat: number;
-  lng: number;
+  address: string;
   type: NodeType;
-  color: string;
 }
 
-const points: Point[] = [
-  { name: "Sede Principal", lat: 4.338, lng: -74.364, type: "hub", color: "purple" },
-  { name: "CAA (sub-hub)", lat: 4.3368, lng: -74.3628, type: "subhub", color: "blue" },
-  { name: "P.S. El Obrero", lat: 4.3351, lng: -74.3558, type: "urbano", color: "green" },
-  { name: "P.S. El Progreso", lat: 4.3463, lng: -74.3601, type: "urbano", color: "green" },
-  { name: "P.S. La Venta", lat: 4.329, lng: -74.352, type: "urbano", color: "green" },
-  { name: "P.S. La Aguadita", lat: 4.378, lng: -74.365, type: "rural", color: "orange" },
-  { name: "P.S. La Trinidad", lat: 4.312, lng: -74.39, type: "rural", color: "orange" },
-  { name: "P.S. Bosachoque", lat: 4.355, lng: -74.415, type: "critico", color: "red" },
-  { name: "P.S. Novillero", lat: 4.362, lng: -74.428, type: "critico", color: "red" },
-  { name: "P.S. Cumaca", lat: 4.301, lng: -74.375, type: "critico", color: "red" },
-  { name: "P.S. Tibacuy", lat: 4.3485, lng: -74.442, type: "intermunicipal", color: "yellow" },
-  { name: "P.S. Pasca", lat: 4.3072, lng: -74.3006, type: "intermunicipal", color: "yellow" },
+interface Point extends PointInput {
+  lat: number;
+  lng: number;
+}
+
+const puntos: PointInput[] = [
+  { name: "Sede Principal", address: "Diagonal 23 #12-64, Barrio San Mateo, Fusagasugá, Cundinamarca", type: "hub" },
+  { name: "CAA", address: "Transversal 12 #22-42, Fusagasugá, Cundinamarca", type: "subhub" },
+  { name: "P.S. El Obrero", address: "Transversal 3 #23-21, Barrio Obrero, Fusagasugá, Cundinamarca", type: "urbano" },
+  { name: "P.S. El Progreso", address: "Carrera 3 #3-09, Fusagasugá, Cundinamarca", type: "urbano" },
+  { name: "P.S. La Venta", address: "Carrera 64 #21A-90, Fusagasugá, Cundinamarca", type: "urbano" },
+  { name: "P.S. La Aguadita", address: "Carrera 3 #6-25, Fusagasugá, Cundinamarca", type: "rural" },
+  { name: "P.S. La Trinidad", address: "Sector La Trinidad, Fusagasugá, Cundinamarca", type: "rural" },
+  { name: "P.S. Bosachoque", address: "Vereda Bosachoque, Fusagasugá, Cundinamarca", type: "critico" },
+  { name: "P.S. Novillero", address: "Vereda Novillero, Fusagasugá, Cundinamarca", type: "critico" },
+  { name: "P.S. Cumaca", address: "Vereda Cumaca, Fusagasugá, Cundinamarca", type: "critico" },
+  { name: "P.S. Tibacuy", address: "Tibacuy, Cundinamarca", type: "intermunicipal" },
+  { name: "P.S. Pasca", address: "Barrio Bellavista, Pasca, Cundinamarca", type: "intermunicipal" },
 ];
 
 const typeLabels: Record<NodeType, string> = {
@@ -57,7 +62,6 @@ const routeForType: Record<NodeType, { name: string; color: string } | null> = {
   intermunicipal: { name: "Ruta D — Intermunicipal", color: "#854F0B" },
 };
 
-// Haversine distance in km
 function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -78,9 +82,12 @@ declare global {
 
 function Index() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [points, setPoints] = useState<Point[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const geocode = useServerFn(geocodeAddresses);
 
+  // Load Google Maps JS
   useEffect(() => {
     const key = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
     const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
@@ -88,17 +95,12 @@ function Index() {
       setError("Falta la clave de Google Maps.");
       return;
     }
-
-    window.initHospitalMap = () => setLoaded(true);
-
+    window.initHospitalMap = () => setMapLoaded(true);
     if (window.google?.maps) {
-      setLoaded(true);
+      setMapLoaded(true);
       return;
     }
-
-    const existing = document.querySelector<HTMLScriptElement>("script[data-gmaps]");
-    if (existing) return;
-
+    if (document.querySelector("script[data-gmaps]")) return;
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&callback=initHospitalMap${channel ? `&channel=${channel}` : ""}`;
     script.async = true;
@@ -108,19 +110,50 @@ function Index() {
     document.head.appendChild(script);
   }, []);
 
+  // Geocode addresses
   useEffect(() => {
-    if (!loaded || !mapRef.current || !window.google?.maps) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { results } = await geocode({
+          data: { addresses: puntos.map((p) => p.address) },
+        });
+        if (cancelled) return;
+        const resolved: Point[] = [];
+        const missing: string[] = [];
+        puntos.forEach((p, i) => {
+          const loc = results[i]?.location;
+          if (loc) resolved.push({ ...p, lat: loc.lat, lng: loc.lng });
+          else missing.push(p.name);
+        });
+        if (missing.length) {
+          console.warn("No se pudieron geocodificar:", missing);
+        }
+        setPoints(resolved);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? "Error geocodificando direcciones");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [geocode]);
+
+  // Render markers + routes
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current || !window.google?.maps || !points || points.length === 0) return;
     const g = window.google.maps;
 
+    const hub = points.find((p) => p.type === "hub") ?? points[0];
+
     const map = new g.Map(mapRef.current, {
-      center: { lat: 4.338, lng: -74.364 },
+      center: { lat: hub.lat, lng: hub.lng },
       zoom: 12,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: true,
     });
 
-    const hub = points[0];
     const infoWindow = new g.InfoWindow();
 
     points.forEach((p) => {
@@ -141,15 +174,15 @@ function Index() {
       const route = routeForType[p.type];
       const dist = distanceKm(hub, p).toFixed(2);
       const content = `
-        <div style="font-family: ui-sans-serif, system-ui; min-width: 200px;">
+        <div style="font-family: ui-sans-serif, system-ui; min-width: 220px;">
           <div style="font-weight:600; font-size:14px; color:#0f172a;">${p.name}</div>
           <div style="margin-top:4px; font-size:12px; color:#475569;">
             <div><b>Tipo:</b> ${typeLabels[p.type]}</div>
             <div><b>Ruta:</b> ${route ? route.name : "—"}</div>
             <div><b>Distancia desde sede:</b> ${dist} km</div>
+            <div style="margin-top:4px; color:#64748b;">${p.address}</div>
           </div>
         </div>`;
-
       marker.addListener("click", () => {
         infoWindow.setContent(content);
         infoWindow.open({ anchor: marker, map });
@@ -157,61 +190,55 @@ function Index() {
     });
 
     const directionsService = new g.DirectionsService();
-    points.slice(1).forEach((p, idx) => {
-      const route = routeForType[p.type];
-      if (!route) return;
-      const renderer = new g.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
-        preserveViewport: true,
-        polylineOptions: { strokeColor: route.color, strokeWeight: 3 },
-      });
-      // Stagger requests slightly to be gentle on the API
-      setTimeout(() => {
-        directionsService.route(
-          {
-            origin: { lat: hub.lat, lng: hub.lng },
-            destination: { lat: p.lat, lng: p.lng },
-            travelMode: g.TravelMode.DRIVING,
-          },
-          (result: any, status: any) => {
-            if (status === "OK" && result) {
-              renderer.setDirections(result);
-            } else {
-              // Fallback: straight line if Directions fails (e.g. no route)
-              new g.Polyline({
-                path: [
-                  { lat: hub.lat, lng: hub.lng },
-                  { lat: p.lat, lng: p.lng },
-                ],
-                geodesic: true,
-                strokeColor: route.color,
-                strokeOpacity: 0.6,
-                strokeWeight: 3,
-                map,
-              });
+    points
+      .filter((p) => p.type !== "hub")
+      .forEach((p, idx) => {
+        const route = routeForType[p.type];
+        if (!route) return;
+        const renderer = new g.DirectionsRenderer({
+          map,
+          suppressMarkers: true,
+          preserveViewport: true,
+          polylineOptions: { strokeColor: route.color, strokeWeight: 3 },
+        });
+        setTimeout(() => {
+          directionsService.route(
+            {
+              origin: { lat: hub.lat, lng: hub.lng },
+              destination: { lat: p.lat, lng: p.lng },
+              travelMode: g.TravelMode.DRIVING,
+            },
+            (result: any, status: any) => {
+              if (status === "OK" && result) {
+                renderer.setDirections(result);
+              } else {
+                new g.Polyline({
+                  path: [
+                    { lat: hub.lat, lng: hub.lng },
+                    { lat: p.lat, lng: p.lng },
+                  ],
+                  geodesic: true,
+                  strokeColor: route.color,
+                  strokeOpacity: 0.6,
+                  strokeWeight: 3,
+                  map,
+                });
+              }
             }
-          }
-        );
-      }, idx * 120);
-    });
-  }, [loaded]);
+          );
+        }, idx * 120);
+      });
+  }, [mapLoaded, points]);
 
-  const nodeLegend: { type: NodeType }[] = [
-    { type: "hub" },
-    { type: "subhub" },
-    { type: "urbano" },
-    { type: "rural" },
-    { type: "critico" },
-    { type: "intermunicipal" },
-  ];
-
+  const nodeLegend: NodeType[] = ["hub", "subhub", "urbano", "rural", "critico", "intermunicipal"];
   const routeLegend = [
     { name: "Ruta A — Urbana", color: "#185FA5" },
     { name: "Ruta B — Rural Norte", color: "#0F6E56" },
     { name: "Ruta C — Rural Occidente", color: "#A32D2D" },
     { name: "Ruta D — Intermunicipal", color: "#854F0B" },
   ];
+
+  const hubPoint = points?.find((p) => p.type === "hub");
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -221,7 +248,7 @@ function Index() {
             E.S.E. Hospital San Rafael de Fusagasugá
           </h1>
           <p className="text-sm text-slate-500">
-            Red de distribución de medicamentos — 12 puntos
+            Red de distribución de medicamentos — direcciones geocodificadas en vivo
           </p>
         </div>
       </header>
@@ -234,9 +261,9 @@ function Index() {
                 {error}
               </div>
             )}
-            {!loaded && !error && (
+            {!error && (!mapLoaded || !points) && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 text-sm text-slate-500">
-                Cargando mapa…
+                {points ? "Cargando mapa…" : "Geocodificando direcciones…"}
               </div>
             )}
             <div ref={mapRef} className="h-full w-full" />
@@ -246,13 +273,13 @@ function Index() {
             <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="mb-3 text-sm font-semibold text-slate-900">Tipos de nodo</h2>
               <ul className="space-y-2">
-                {nodeLegend.map((n) => (
-                  <li key={n.type} className="flex items-center gap-3 text-sm text-slate-700">
+                {nodeLegend.map((t) => (
+                  <li key={t} className="flex items-center gap-3 text-sm text-slate-700">
                     <span
                       className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white shadow"
-                      style={{ backgroundColor: typeColors[n.type] }}
+                      style={{ backgroundColor: typeColors[t] }}
                     />
-                    {typeLabels[n.type]}
+                    {typeLabels[t]}
                   </li>
                 ))}
               </ul>
@@ -276,16 +303,18 @@ function Index() {
             <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="mb-3 text-sm font-semibold text-slate-900">Puntos</h2>
               <ul className="max-h-64 space-y-1.5 overflow-auto pr-1 text-xs text-slate-600">
-                {points.map((p) => (
+                {(points ?? []).map((p) => (
                   <li key={p.name} className="flex items-center gap-2">
                     <span
                       className="inline-block h-2.5 w-2.5 rounded-full"
                       style={{ backgroundColor: typeColors[p.type] }}
                     />
                     <span className="flex-1 truncate">{p.name}</span>
-                    <span className="text-slate-400">
-                      {distanceKm(points[0], p).toFixed(1)} km
-                    </span>
+                    {hubPoint && (
+                      <span className="text-slate-400">
+                        {distanceKm(hubPoint, p).toFixed(1)} km
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
