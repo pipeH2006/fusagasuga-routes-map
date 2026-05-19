@@ -48,14 +48,13 @@ const typeColors: Record<NodeType, string> = {
   intermunicipal: "#eab308",
 };
 
-// Route assignment: urbano + subhub => A azul, rural => B verde, critico => C rojo, intermunicipal => D naranja
 const routeForType: Record<NodeType, { name: string; color: string } | null> = {
   hub: null,
-  subhub: { name: "Ruta A — Urbana", color: "#2563eb" },
-  urbano: { name: "Ruta A — Urbana", color: "#2563eb" },
-  rural: { name: "Ruta B — Rural Norte", color: "#16a34a" },
-  critico: { name: "Ruta C — Rural Occidente", color: "#dc2626" },
-  intermunicipal: { name: "Ruta D — Intermunicipal", color: "#ea580c" },
+  subhub: { name: "Ruta A — Urbana", color: "#185FA5" },
+  urbano: { name: "Ruta A — Urbana", color: "#185FA5" },
+  rural: { name: "Ruta B — Rural Norte", color: "#0F6E56" },
+  critico: { name: "Ruta C — Rural Occidente", color: "#A32D2D" },
+  intermunicipal: { name: "Ruta D — Intermunicipal", color: "#854F0B" },
 };
 
 // Haversine distance in km
@@ -157,20 +156,44 @@ function Index() {
       });
     });
 
-    points.slice(1).forEach((p) => {
+    const directionsService = new g.DirectionsService();
+    points.slice(1).forEach((p, idx) => {
       const route = routeForType[p.type];
       if (!route) return;
-      new g.Polyline({
-        path: [
-          { lat: hub.lat, lng: hub.lng },
-          { lat: p.lat, lng: p.lng },
-        ],
-        geodesic: true,
-        strokeColor: route.color,
-        strokeOpacity: 0.85,
-        strokeWeight: 3,
+      const renderer = new g.DirectionsRenderer({
         map,
+        suppressMarkers: true,
+        preserveViewport: true,
+        polylineOptions: { strokeColor: route.color, strokeWeight: 3 },
       });
+      // Stagger requests slightly to be gentle on the API
+      setTimeout(() => {
+        directionsService.route(
+          {
+            origin: { lat: hub.lat, lng: hub.lng },
+            destination: { lat: p.lat, lng: p.lng },
+            travelMode: g.TravelMode.DRIVING,
+          },
+          (result: any, status: any) => {
+            if (status === "OK" && result) {
+              renderer.setDirections(result);
+            } else {
+              // Fallback: straight line if Directions fails (e.g. no route)
+              new g.Polyline({
+                path: [
+                  { lat: hub.lat, lng: hub.lng },
+                  { lat: p.lat, lng: p.lng },
+                ],
+                geodesic: true,
+                strokeColor: route.color,
+                strokeOpacity: 0.6,
+                strokeWeight: 3,
+                map,
+              });
+            }
+          }
+        );
+      }, idx * 120);
     });
   }, [loaded]);
 
@@ -184,10 +207,10 @@ function Index() {
   ];
 
   const routeLegend = [
-    { name: "Ruta A — Urbana", color: "#2563eb" },
-    { name: "Ruta B — Rural Norte", color: "#16a34a" },
-    { name: "Ruta C — Rural Occidente", color: "#dc2626" },
-    { name: "Ruta D — Intermunicipal", color: "#ea580c" },
+    { name: "Ruta A — Urbana", color: "#185FA5" },
+    { name: "Ruta B — Rural Norte", color: "#0F6E56" },
+    { name: "Ruta C — Rural Occidente", color: "#A32D2D" },
+    { name: "Ruta D — Intermunicipal", color: "#854F0B" },
   ];
 
   return (
