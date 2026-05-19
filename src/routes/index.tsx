@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { geocodeAddresses } from "@/lib/geocode.functions";
+import { computeRoutes } from "@/lib/routes.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
