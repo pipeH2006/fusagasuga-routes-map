@@ -13,6 +13,8 @@ interface PointInput {
   name: string;
   address: string;
   type: NodeType;
+  lat?: number;
+  lng?: number;
 }
 
 interface Point extends PointInput {
@@ -23,16 +25,16 @@ interface Point extends PointInput {
 const puntos: PointInput[] = [
   { name: "Sede Principal", address: "Diagonal 23 #12-64, Barrio San Mateo, Fusagasugá, Cundinamarca", type: "hub" },
   { name: "CAA", address: "Transversal 12 #22-42, Fusagasugá, Cundinamarca", type: "subhub" },
-  { name: "P.S. El Obrero", address: "Transversal 3 #23-21, Barrio Obrero, Fusagasugá, Cundinamarca", type: "urbano" },
-  { name: "P.S. El Progreso", address: "Carrera 3 #3-09, Fusagasugá, Cundinamarca", type: "urbano" },
+  { name: "P.S. El Obrero", address: "Transversal 3 #23-21, Barrio Obrero, Fusagasugá, Cundinamarca", type: "urbano", lat: 4.326458, lng: -74.365414 },
+  { name: "P.S. El Progreso", address: "Carrera 3 #3-09, Fusagasugá, Cundinamarca", type: "urbano", lat: 4.351506, lng: -74.362327 },
   { name: "P.S. La Venta", address: "Carrera 64 #21A-90, Fusagasugá, Cundinamarca", type: "urbano" },
-  { name: "P.S. La Aguadita", address: "Carrera 3 #6-25, Fusagasugá, Cundinamarca", type: "rural" },
-  { name: "P.S. La Trinidad", address: "Sector La Trinidad, Fusagasugá, Cundinamarca", type: "rural" },
+  { name: "P.S. La Aguadita", address: "Carrera 3 #6-25, Fusagasugá, Cundinamarca", type: "rural", lat: 4.387639, lng: -74.325444 },
+  { name: "P.S. La Trinidad", address: "Sector La Trinidad, Fusagasugá, Cundinamarca", type: "rural", lat: 4.292547, lng: -74.388391 },
   { name: "P.S. Bosachoque", address: "Vereda Bosachoque, Fusagasugá, Cundinamarca", type: "critico" },
-  { name: "P.S. Novillero", address: "Vereda Novillero, Fusagasugá, Cundinamarca", type: "critico" },
+  { name: "P.S. Novillero", address: "Vereda Novillero, Fusagasugá, Cundinamarca", type: "critico", lat: 4.358168, lng: -74.395405 },
   { name: "P.S. Cumaca", address: "Vereda Cumaca, Fusagasugá, Cundinamarca", type: "critico" },
-  { name: "P.S. Tibacuy", address: "Tibacuy, Cundinamarca", type: "intermunicipal" },
-  { name: "P.S. Pasca", address: "Barrio Bellavista, Pasca, Cundinamarca", type: "intermunicipal" },
+  { name: "P.S. Tibacuy", address: "Tibacuy, Cundinamarca", type: "intermunicipal", lat: 3.349346, lng: -74.452667 },
+  { name: "P.S. Pasca", address: "Barrio Bellavista, Pasca, Cundinamarca", type: "intermunicipal", lat: 4.307545, lng: -74.301442 },
 ];
 
 const typeLabels: Record<NodeType, string> = {
@@ -115,16 +117,22 @@ function Index() {
     let cancelled = false;
     (async () => {
       try {
-        const { results } = await geocode({
-          data: { addresses: puntos.map((p) => p.address) },
-        });
+        const toGeocode = puntos.filter((p) => p.lat == null || p.lng == null);
+        const { results } = toGeocode.length
+          ? await geocode({ data: { addresses: toGeocode.map((p) => p.address) } })
+          : { results: [] as Array<{ address: string; location: { lat: number; lng: number } | null }> };
         if (cancelled) return;
+        const locByAddress = new Map(results.map((r) => [r.address, r.location]));
         const resolved: Point[] = [];
         const missing: string[] = [];
-        puntos.forEach((p, i) => {
-          const loc = results[i]?.location;
-          if (loc) resolved.push({ ...p, lat: loc.lat, lng: loc.lng });
-          else missing.push(p.name);
+        puntos.forEach((p) => {
+          if (p.lat != null && p.lng != null) {
+            resolved.push({ ...p, lat: p.lat, lng: p.lng });
+          } else {
+            const loc = locByAddress.get(p.address);
+            if (loc) resolved.push({ ...p, lat: loc.lat, lng: loc.lng });
+            else missing.push(p.name);
+          }
         });
         if (missing.length) {
           console.warn("No se pudieron geocodificar:", missing);
