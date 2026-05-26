@@ -45,7 +45,7 @@ const puntos: PointInput[] = [
   { name: "P.S. Bosachoque", address: "Vereda Bosachoque, Fusagasugá, Cundinamarca", type: "critico" },
   { name: "P.S. Novillero", address: "Vereda Novillero, Fusagasugá, Cundinamarca", type: "critico", lat: 4.358168, lng: -74.395405 },
   { name: "P.S. Cumaca", address: "Vereda Cumaca, Fusagasugá, Cundinamarca", type: "critico" },
-  { name: "P.S. Tibacuy", address: "Tibacuy, Cundinamarca", type: "intermunicipal", lat: 4.35111, lng: -72.45639 },
+  { name: "P.S. Tibacuy", address: "Tibacuy, Cundinamarca", type: "intermunicipal", lat: 4.347889, lng: -74.450833 },
   { name: "P.S. Pasca", address: "Barrio Bellavista, Pasca, Cundinamarca", type: "intermunicipal", lat: 4.307545, lng: -74.301442 },
 ];
 
