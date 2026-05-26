@@ -59,7 +59,7 @@ const pointMeta: Record<string, PointMeta> = {
   "P.S. La Trinidad": { km: 12, min: 30, costo: 60000, horario: "L-V 7:30am-3:30pm, Sáb 8am-12m", frecuencia: "1x semana", via: "Mixta" },
   "P.S. Bosachoque": { km: 14, min: 40, costo: 70000, horario: "L-V 7:30am-3:30pm", frecuencia: "Quincenal", via: "Trocha ⚠" },
   "P.S. Novillero": { km: 16, min: 45, costo: 80000, horario: "L-V 7:30am-3:30pm", frecuencia: "Quincenal", via: "Trocha ⚠" },
-  "P.S. Cumaca": { km: 18, min: 50, costo: 90000, horario: "L-V 7:30am-3:30pm", frecuencia: "Quincenal", via: "Sin asfaltar ⚠" },
+  "P.S. Cumaca": { km: 24, min: 50, costo: 90000, horario: "L-V 7:30am-3:30pm", frecuencia: "Quincenal", via: "Sin asfaltar ⚠" },
   "P.S. Tibacuy": { km: 21, min: 50, costo: 110000, horario: "L-V 8am-5pm, Sáb 8am-12m", frecuencia: "1x semana", via: "Carretera departamental" },
   "P.S. Pasca": { km: 11, min: 23, costo: 55000, horario: "L-V 7am-5pm, Sáb 8am-3pm", frecuencia: "1x semana", via: "Pavimentada" },
 };
